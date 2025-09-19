@@ -1,64 +1,18 @@
-name: Windows 11 RDP with Ngrok
+- name: 🚀 Start Ngrok Tunnel for RDP (3389)
+  run: |
+    Start-Process -FilePath "./ngrok/ngrok.exe" -ArgumentList "tcp 3389" -RedirectStandardOutput "D:\a\ngrok.log"
+    Start-Sleep -Seconds 15
 
-on:
-  workflow_dispatch:
-
-jobs:
-  rdp:
-    runs-on: windows-latest  # Closest available to Windows 11 as of now
-    timeout-minutes: 9999
-
-    steps:
-      - name: 🧾 Download Dependencies
-        run: |
-          Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-          Invoke-WebRequest https://raw.githubusercontent.com/Riders004/rdp/master/start.bat -OutFile start.bat
-          Invoke-WebRequest https://raw.githubusercontent.com/Riders004/rdp/master/download1.jpeg -OutFile wallpaper.bat
-          Invoke-WebRequest https://raw.githubusercontent.com/Vip3rLi0n/Ngrok-RDPs/main/resources/loop.ps1 -OutFile loop.ps1
-
-      - name: 📦 Extract Ngrok
-        run: Expand-Archive ngrok.zip
-
-      - name: 🔐 Authenticate Ngrok
-        env:
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        run: |
-          ./ngrok/ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
-
-      - name: 🪟 Enable RDP on Windows
-        run: |
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-          Copy-Item wallpaper.bat D:\a\wallpaper.bat
-
-      - name: 🚀 Start Ngrok Tunnel for RDP (3389)
-        run: |
-          Start-Job -ScriptBlock {
-            ./ngrok/ngrok.exe tcp 3389 > ngrok.log
-          }
-          Start-Sleep -Seconds 10
-
-      - name: 🌐 Show Public RDP Address
-        run: |
-          $log = Get-Content ngrok.log -Raw
-          if ($log -match "url=tcp://([a-zA-Z0-9\.-]+):([0-9]+)") {
-            $host = $matches[1]
-            $port = $matches[2]
-            Write-Output "`n🔗 RDP Login Address: ${host}:${port}`n"
-          } else {
-            Write-Output "❌ Could not extract Ngrok tunnel URL. Dumping log:"
-            Get-Content ngrok.log
-          }
-
-      - name: 🧑‍💻 Set RDP User & Password
-        run: |
-          net user administrator OLDUSER#6
-          Write-Output "`n👤 Username: administrator"
-          Write-Output "🔑 Password: OLDUSER#6"
-
-      - name: ▶️ Run RDP Setup Script
-        run: cmd /c start.bat
-
-      - name: 🔁 Run Loop Script (Keep RDP Alive)
-        run: powershell -ExecutionPolicy Bypass -File loop.ps1
+- name: 🌐 Show Public RDP Address
+  run: |
+    $log = Get-Content "D:\a\ngrok.log" -Raw
+    if ($log -match "url=tcp://([a-zA-Z0-9\.-]+):([0-9]+)") {
+      $host = $matches[1]
+      $port = $matches[2]
+      Write-Output "`n🔗 RDP Login Address: ${host}:${port}`n"
+    } else {
+      Write-Output "❌ Could not extract Ngrok tunnel URL. Dumping log:"
+      Write-Output "`n--- NGROK LOG START ---`n"
+      Get-Content "D:\a\ngrok.log"
+      Write-Output "`n--- NGROK LOG END ---`n"
+    }
